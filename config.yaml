@@ -1,0 +1,24 @@
+network:
+  layers:
+    [
+      { function: "linear", lr: 0.00001, beta: 1, neuron: 35, opt: "adam" },
+      { function: "tan_h", lr: 0.00001, beta: 1, neuron: 25, opt: "adam" },
+      { function: "linear", lr: 0.00001, beta: 1, neuron: 10, opt: "adam" },
+      { function: "tan_h", lr: 0.00001, beta: 1, neuron: 5, opt: "adam" },
+      { function: "linear", lr: 0.00001, beta: 1, neuron: 2, opt: "adam" },
+      { function: "tan_h", lr: 0.00001, beta: 1, neuron: 5, opt: "adam" },
+      { function: "linear", lr: 0.00001, beta: 1, neuron: 10, opt: "adam" },
+      { function: "tan_h", lr: 0.00001, beta: 1, neuron: 25, opt: "adam" },
+      { function: "linear", lr: 0.00001, beta: 1, neuron: 35, opt: "adam" },
+    ]
+best_networks:
+  [
+    layers:
+      [
+        { function: "linear", learning_rate: 0.001, beta: 0.5, neuron_qty: 35 },
+        { function: "tan_h", learning_rate: 0.001, beta: 0.5, neuron_qty: 15 },
+        { function: "linear", learning_rate: 0.0001, beta: 0.5, neuron_qty: 2 },
+        { function: "tan_h", learning_rate: 0.001, beta: 0.5, neuron_qty: 15 },
+        { function: "linear", learning_rate: 0.001, beta: 0.5, neuron_qty: 35 },
+      ],
+  ]
