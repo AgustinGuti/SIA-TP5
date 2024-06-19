@@ -26,13 +26,18 @@ class NeuralNetwork:
             
         self.min_error = sys.maxsize
 
-    # TODO: Check if this is correct
     def predict_latent_space(self, data_input):
         next_layer_input = data_input
         for i, layer in enumerate(self.layers):
             next_layer_input = layer.forward(next_layer_input)
             if i == self.latent_layer - 1:
                 return next_layer_input
+        return next_layer_input
+
+    def predict_from_latent_space(self, data_input):
+        next_layer_input = data_input
+        for layer in self.layers[self.latent_layer:]:
+            next_layer_input = layer.forward(next_layer_input)
         return next_layer_input
 
     def predict(self, data_input):
