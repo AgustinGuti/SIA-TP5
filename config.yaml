@@ -1,17 +1,14 @@
 network:
   layers: [30, 20, 10, 5]
-  learning_rate: 0.001
-  beta: 6
+  learning_rate: 0.1
+  beta: 0.5
   function: "tan_h"
   optimizer: "adam"
 best_networks:
-  [
-    layers:
-      [
-        { function: "linear", learning_rate: 0.001, beta: 0.5, neuron_qty: 35 },
-        { function: "tan_h", learning_rate: 0.001, beta: 0.5, neuron_qty: 15 },
-        { function: "linear", learning_rate: 0.0001, beta: 0.5, neuron_qty: 2 },
-        { function: "tan_h", learning_rate: 0.001, beta: 0.5, neuron_qty: 15 },
-        { function: "linear", learning_rate: 0.001, beta: 0.5, neuron_qty: 35 },
-      ],
-  ]
+  - net1:
+      layers: [30, 20, 10, 5]
+      learning_rate: 0.0001
+      beta: 0.5
+      function: "tan_h"
+      optimizer: "adam"
+train: True

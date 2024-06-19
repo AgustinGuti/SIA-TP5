@@ -2,6 +2,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import re
 import yaml
+import csv
+import pandas as pd
 import matplotlib.animation as animation
 from NeuralNetwork import NeuralNetwork, calculate_error, get_different_pixel_count, clean_results
 
@@ -17,57 +19,74 @@ def main():
 
     neural_network = NeuralNetwork(config['network']['layers'],35, 2, config['network']['function'], config['network']['beta'], config['network']['learning_rate'], config['network']['optimizer'])
 
-    if True:
-        min_error, iterations, error_history, pixel_error_history = neural_network.train(example_data_input, example_data_output, 1000000)
+    train = config['train']
+
+    if train:
+        min_error, iterations = neural_network.train(example_data_input, example_data_output, 1000000)
         print(f'Training finished in {iterations} iterations')
 
         neural_network.dump_weights_to_file('weights.txt')
-
-        plt.figure()
-
-        plt.plot(range(len(pixel_error_history)), pixel_error_history, label='Training Error')
-        plt.legend()
-        plt.xlabel('Epochs')
-        plt.ylabel('Error')
-        plt.title(f'Pixel Training Error over Epochs')
-        plt.savefig('results/pixel_error.png')
-
-        plt.figure()
-
-        plt.plot(range(len(error_history)), error_history, label='Training Error')
-        plt.legend()
-        plt.xlabel('Epochs')
-        plt.ylabel('Error')
-        plt.title(f'Training Error over Epochs')
-        plt.savefig('results/error.png')
-
-        print(f'Min error: {min_error}')
     
     else:
-        neural_network.load_weights_from_file('best_weights.txt')
+        neural_network.load_weights_from_file('last_weights.txt')
 
-    example_data_input = np.reshape(example_data_input, (len(example_data_input), 35, 1))
+    with open('error_history.csv', 'r') as f:
+        df = pd.read_csv('error_history.csv')
 
-    for i, input_data in enumerate(example_data_input):
-        result = neural_network.predict(input_data)
-        pixel_error = get_different_pixel_count(result, example_data_output[i])
-        print(f'Number: {i} - Pixel Error: {pixel_error} - Percentage: {pixel_error/len(result)*100}')
+    plt.figure()
+    plt.plot(df['iteration'], df['pixel_error'])
+    plt.xlabel('Epochs')
+    plt.ylabel('Error')
+    plt.title(f'Pixel Training Error over Epochs')
+    plt.savefig('results/pixel_error.png')
 
-        print_number(i, result)
-        print_number(f'{i}_clean', clean_results(result))
-        print_number(f'{i}_expected', input_data)
+    plt.figure()
+    plt.plot(df['iteration'], df['error'])
+    plt.xlabel('Epochs')
+    plt.ylabel('Error')
+    plt.title(f'Training Error over Epochs')
+    plt.savefig('results/error.png')
 
-    latent_results = [neural_network.predict_latent_space(example_data_input[i]) for i in range(len(example_data_input))]
-    print(latent_results)
+    plt.figure()
+    plt.plot(df['iteration'], df['max_pixel_error'])
+    plt.xlabel('Epochs')
+    plt.ylabel('Error')
+    plt.title(f'Max Pixel Training Error over Epochs')
+    plt.savefig('results/max_pixel_error.png')
+
+    batch_size = example_data_input.shape[0]
+    num_complete_batches, remainder = divmod(len(example_data_input), batch_size)
+    batches = [example_data_input[i * batch_size:(i+1) + batch_size] for i in range(num_complete_batches)]
+
+    example_data_input = np.array(batches)
+    example_data_output = np.array(batches)
+
+    total_error = 0
+
+    # for i, input_data in enumerate(example_data_input[0]):
+    #     result = neural_network.predict(input_data)
+    #     pixel_error = get_different_pixel_count(result, example_data_output[0][i])
+    #     letter = font_tags[i]
+    #     print(f'Letter: {letter} - Pixel Error: {pixel_error}')
+    #     total_error += pixel_error
+
+    #     print_number(letter, result)
+    #     print_number(f'{letter}_clean', clean_results(result))
+    #     print_number(f'{letter}_expected', input_data)
+
+    print(f'Total error: {total_error}')
+
+    latent_results = neural_network.predict_latent_space(example_data_input)
+    # print(latent_results[0])
 
     # Scatter plot
     plt.figure()
 
-    plt.scatter([x[0] for x in latent_results], [x[1] for x in latent_results])
+    plt.scatter([x[0] for x in latent_results[0]], [x[1] for x in latent_results[0]])
 
     # Add a tag to each point
     for i, txt in enumerate(font_tags):
-        plt.text(latent_results[i][0], latent_results[i][1], txt)
+        plt.text(latent_results[0][i][0], latent_results[0][i][1], txt)
 
     plt.xlabel('Number')
     plt.ylabel('Latent Value')
@@ -118,7 +137,7 @@ def print_number(title, data, dims=(7,5)):
     plt.title(f'{title}')
     plt.imshow(array_data, cmap='gray_r')  # 'gray_r' is reversed grayscale: 0=white, 1=black
     plt.axis('off')  # Turn off axis numbers and ticks
-    plt.savefig(f'results/{title}.png')
+    plt.savefig(f'results/letters/{title}.png')
     plt.close()
 
 
