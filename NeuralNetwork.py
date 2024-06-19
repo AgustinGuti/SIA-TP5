@@ -1,8 +1,7 @@
 import numpy as np
 import sys
 import json
-
-from multiprocessing import Pool
+import time
 from Layer import Layer  
 
 class NeuralNetwork:
@@ -82,6 +81,7 @@ class NeuralNetwork:
             f.write('iteration,max_pixel_error,pixel_error,error\n')
         
         with open('error_history.csv', 'a') as f:
+            last_time = time.time()
             while iteration < iters:
                 err = 0
                 # mu = np.random.randint(0, input_len)
@@ -101,7 +101,10 @@ class NeuralNetwork:
 
                     pixel_error = sum(pixel_error)
 
-                    print(f'Iteration: {iteration} - Pixel Error Sum: {pixel_error} - Error: {error:0.5f} - Max Pixel Error: {max_pixel_error} - Max Ever Pixel Error: {best_pixel_error}')
+                    time_diff = time.time() - last_time
+                    last_time = time.time()
+
+                    print(f'Iteration: {iteration} - Pixel Error Sum: {pixel_error} - Error: {error:0.5f} - Max Pixel Error: {max_pixel_error} - Max Ever Pixel Error: {best_pixel_error} - Time: {time_diff:0.3f} seconds')
                     f.write(f'{iteration}, {max_pixel_error}, {pixel_error}, {error}\n')
 
                     if max_pixel_error < best_pixel_error:
@@ -112,6 +115,8 @@ class NeuralNetwork:
                         best_pixel_error_sum = pixel_error
                         if max_pixel_error == best_pixel_error:
                             self.dump_weights_to_file('last_weights.txt')
+
+  
 
                 if error < self.min_error:
                     self.min_error = error
