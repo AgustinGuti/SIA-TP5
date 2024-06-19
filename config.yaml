@@ -11,4 +11,4 @@ best_networks:
       beta: 0.5
       function: "tan_h"
       optimizer: "adam"
-train: True
+train: False

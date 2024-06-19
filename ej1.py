@@ -66,8 +66,6 @@ def main():
     for i, input_data in enumerate(example_data_input[0]):
         result = neural_network.predict(input_data)
 
-        print(result)
-
         pixel_error = get_different_pixel_count(result, example_data_output[0][i])
         letter = font_tags[i]
         print(f'Letter: {letter} - Pixel Error: {pixel_error}')
@@ -95,47 +93,69 @@ def main():
     plt.title('Latent Values')
     plt.savefig('results/latent_values.png')
 
-
     # Predict new letter
-    new_input = [-0.5, 0.2]
-    # new_input = np.random.uniform(low=-1, high=1, size=2)
-    print(f'New letter input: {new_input}')
+    new_input = [0.3, 0.8]
     result = neural_network.predict_from_latent_space(new_input)
     print_number('new_letter', result, folder='results')
     print_number(f'new_letter_clean', clean_results(result), folder='results')
 
+    min_latent_x = min([x[0] for x in latent_results[0]]) - 0.1
+    max_latent_x = max([x[0] for x in latent_results[0]]) + 0.1
+
+    min_latent_y = min([x[1] for x in latent_results[0]]) - 0.1
+    max_latent_y = max([x[1] for x in latent_results[0]]) + 0.1
 
 
-    # x = np.linspace(-1, 1, 50)
-    # y = np.linspace(-1, 1, 50)
-    # X, Y = np.meshgrid(x, y)
+    grid_size = 100
+    x = np.linspace(min_latent_x, max_latent_x, grid_size)
+    y = np.linspace(min_latent_y, max_latent_y, grid_size)
+    X, Y = np.meshgrid(x, y)
 
-    # Z = np.array([[neural_network.predict_from_latent_space([x_val, y_val]) for x_val in x] for y_val in y])
+    Z = np.array([[neural_network.predict_from_latent_space([x_val, y_val]) for y_val in y] for x_val in x])
 
-    # def find_less_error(x, y):
-    #     letter_index = 0
-    #     min_error = np.inf
-    #     for letter, data in zip(font_tags, example_data_input[0]):
-    #         difference = get_different_pixel_count(Z[x][y], data)
-    #         if difference < min_error:
-    #             min_error = difference
-    #             letter_index = font_tags.index(letter)
-    #     return letter_index, min_error
+    def find_error_to_letter(x, y, letter):
+        letter_index = font_tags.index(letter)
+        return get_different_pixel_count(Z[x][y], example_data_input[0][letter_index])
 
-    # errors = np.array([[find_less_error(i, j)[1] for i in range(50)] for j in range(50)])
+    errors = np.array([[find_error_to_letter(i, j, 'm') for i in range(grid_size)] for j in range(grid_size)])
 
-    # fig = plt.figure()
-    # ax = fig.add_subplot(111)
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+
+    cp = ax.contourf(X, Y, errors, levels=3,  cmap='coolwarm')
+    fig.colorbar(cp)
+    plt.xlabel('X')
+    plt.ylabel('Y')
+    plt.title('Error')
+    plt.scatter([x[0] for x in latent_results[0]], [x[1] for x in latent_results[0]], color='white')
+    for i, txt in enumerate(font_tags):
+        plt.text(latent_results[0][i][0], latent_results[0][i][1], txt)
+    plt.savefig('results/error_map.png')
+
+    def find_less_error(x, y):
+        letter_index = 0
+        min_error = np.inf
+        for letter, data in zip(font_tags, example_data_input[0]):
+            difference = get_different_pixel_count(Z[x][y], data)
+            if difference < min_error:
+                min_error = difference
+                letter_index = font_tags.index(letter)
+        return letter_index, min_error
+
+    errors = np.array([[find_less_error(i, j)[1] for i in range(grid_size)] for j in range(grid_size)])
+
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
     
-    # cp = ax.contourf(X, Y, errors, levels=5,  cmap='coolwarm')
-    # fig.colorbar(cp)
-    # plt.xlabel('X')
-    # plt.ylabel('Y')
-    # plt.title('Error')
-    # plt.scatter([x[0] for x in latent_results[0]], [x[1] for x in latent_results[0]])
-    # plt.savefig('results/error_map.png')
-
-    
+    cp = ax.contourf(X, Y, errors, cmap='coolwarm')
+    fig.colorbar(cp)
+    plt.xlabel('X')
+    plt.ylabel('Y')
+    plt.title('Error')
+    plt.scatter([x[0] for x in latent_results[0]], [x[1] for x in latent_results[0]], color='white')
+    for i, txt in enumerate(font_tags):
+        plt.text(latent_results[0][i][0], latent_results[0][i][1], txt)
+    plt.savefig('results/error_map.png')    
 
     plt.show()
 
