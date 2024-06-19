@@ -1,16 +1,9 @@
 network:
-  layers:
-    [
-      { function: "linear", lr: 0.01, beta: 1, neuron: 35, opt: "adam" },
-      { function: "linear", lr: 0.01, beta: 1, neuron: 25, opt: "adam" },
-      { function: "linear", lr: 0.01, beta: 1, neuron: 10, opt: "adam" },
-      { function: "linear", lr: 0.01, beta: 1, neuron: 5, opt: "adam" },
-      { function: "linear", lr: 0.01, beta: 1, neuron: 2, opt: "adam" },
-      { function: "linear", lr: 0.01, beta: 1, neuron: 5, opt: "adam" },
-      { function: "linear", lr: 0.01, beta: 1, neuron: 10, opt: "adam" },
-      { function: "linear", lr: 0.01, beta: 1, neuron: 25, opt: "adam" },
-      { function: "linear", lr: 0.01, beta: 1, neuron: 35, opt: "adam" },
-    ]
+  layers: [30, 20, 10, 5]
+  learning_rate: 0.001
+  beta: 6
+  function: "tan_h"
+  optimizer: "adam"
 best_networks:
   [
     layers:

@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import re
 import yaml
 import matplotlib.animation as animation
-from NeuralNetwork import NeuralNetwork, LayerParams, calculate_error
+from NeuralNetwork import NeuralNetwork, calculate_error, get_different_pixel_count, clean_results
 
 def main():
     # Open yaml config
@@ -13,44 +13,40 @@ def main():
     font_data, font_tags = parse_font_file('font.h')
 
     example_data_input = np.array(font_data)
-
     example_data_output = np.array(font_data)
 
-    # previous_dimension = len(example_data_input[0])
+    neural_network = NeuralNetwork(config['network']['layers'],35, 2, config['network']['function'], config['network']['beta'], config['network']['learning_rate'], config['network']['optimizer'])
 
-    layers = []
-    for i, layer in enumerate(config['network']['layers']):
-        next_layer = config['network']['layers'][i+1] if i+1 < len(config['network']['layers']) else None
-        layers.append(LayerParams(layer['neuron'], layer['lr'], layer['function'], layer['beta'], layer['opt'], next_layer['neuron'] if next_layer else None))
+    if True:
+        min_error, iterations, error_history, pixel_error_history = neural_network.train(example_data_input, example_data_output, 1000000)
+        print(f'Training finished in {iterations} iterations')
 
-    # for layer in config['network']['layers']:
-    #     layers.append(LayerParams(layer['neuron'], layer['lr'], layer['function'], layer['beta'], layer['opt'], layer['neuron']))
-    #     previous_dimension = layer['neuron']
+        neural_network.dump_weights_to_file('weights.txt')
 
-    neural_network = NeuralNetwork(layers)
+        plt.figure()
+
+        plt.plot(range(len(pixel_error_history)), pixel_error_history, label='Training Error')
+        plt.legend()
+        plt.xlabel('Epochs')
+        plt.ylabel('Error')
+        plt.title(f'Pixel Training Error over Epochs')
+        plt.savefig('results/pixel_error.png')
+
+        plt.figure()
+
+        plt.plot(range(len(error_history)), error_history, label='Training Error')
+        plt.legend()
+        plt.xlabel('Epochs')
+        plt.ylabel('Error')
+        plt.title(f'Training Error over Epochs')
+        plt.savefig('results/error.png')
+
+        print(f'Min error: {min_error}')
     
-    min_error, iterations, error_history, pixel_error_history = neural_network.train(example_data_input, example_data_output, 25000)
-    print(f'Training finished in {iterations} iterations')
+    else:
+        neural_network.load_weights_from_file('best_weights.txt')
 
-    neural_network.dump_weights_to_file('weights.txt')
-
-    plt.figure()
-
-    plt.plot(range(len(pixel_error_history)), pixel_error_history, label='Training Error')
-    plt.legend()
-    plt.xlabel('Epochs')
-    plt.ylabel('Error')
-    plt.title(f'Pixel Training Error over Epochs')
-
-    plt.figure()
-
-    plt.plot(range(len(error_history)), error_history, label='Training Error')
-    plt.legend()
-    plt.xlabel('Epochs')
-    plt.ylabel('Error')
-    plt.title(f'Training Error over Epochs')
-
-    print(f'Min error: {min_error}')
+    example_data_input = np.reshape(example_data_input, (len(example_data_input), 35, 1))
 
     for i, input_data in enumerate(example_data_input):
         result = neural_network.predict(input_data)
@@ -61,7 +57,7 @@ def main():
         print_number(f'{i}_clean', clean_results(result))
         print_number(f'{i}_expected', input_data)
 
-    latent_results = neural_network.predict_until_layer(example_data_input, 5)
+    latent_results = [neural_network.predict_latent_space(example_data_input[i]) for i in range(len(example_data_input))]
     print(latent_results)
 
     # Scatter plot
@@ -76,6 +72,7 @@ def main():
     plt.xlabel('Number')
     plt.ylabel('Latent Value')
     plt.title('Latent Values')
+    plt.savefig('results/latent_values.png')
 
 
     # fig, ax = plt.subplots()
@@ -90,13 +87,6 @@ def main():
     # ax.scatter(example_data_input[:, 0], example_data_input[:, 1], c=example_data_output, cmap='coolwarm')
 
     plt.show()
-
-def clean_results(results):
-    return [1 if x > 0.95 else 0 for x in results]
-
-def get_different_pixel_count(data1, data2):
-    clean_data1 = clean_results(data1)
-    return sum([1 for i in range(len(clean_data1)) if clean_data1[i] != data2[i]])
 
 def parse_font_file(filename):
     font_data = []
