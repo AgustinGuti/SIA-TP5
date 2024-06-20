@@ -2,24 +2,41 @@ import numpy as np
 import sys
 import json
 import time
-from Layer import Layer  
+from Layer import Layer, VariationalLayer
 
 class NeuralNetwork:
-    def __init__(self, layers: list[int], input_dimensions: int, output_dimensions: int, activation_function='linear', beta=100, learning_rate=0.01, optimizer=''):
+    def __init__(self, layers: list[int], input_dimensions: int, output_dimensions: int, activation_function='linear', beta=100, learning_rate=0.01, 
+                 optimizer='', variational=False):
         
         self.latent_layer = len(layers) + 1
-        all_layers = [input_dimensions] + layers + [output_dimensions] + [layer for layer in reversed(layers)] + [input_dimensions]
+        all_layers = [input_dimensions] + layers + [4] + [layer for layer in reversed(layers)] + [input_dimensions]
         self.layers: list[Layer] = []
 
         self.input_dimensions = input_dimensions
 
         i = 0   
-        while i < (len(all_layers) - 1):
-            input_dimensions = all_layers[i]
-            output_dimensions = all_layers[i + 1]
-
-            self.layers.append(Layer((input_dimensions, output_dimensions), i, activation_function, beta, learning_rate, optimizer))
-            i += 1
+        # while i < (len(all_layers) - 1):
+            # input_dimensions = all_layers[i]
+            # output_dimensions = all_layers[i + 1]
+            # if i == self.latent_layer:
+            #     self.layers.append(VariationalLayer((4, 2), i, activation_function, beta, learning_rate, optimizer))
+            # else:
+            #     if variational and i == self.latent_layer + 1:
+            #         self.layers.append(Layer((2, output_dimensions), i, activation_function, beta, learning_rate, optimizer))
+            #         self.layers.append(Layer((input_dimensions, output_dimensions), i, activation_function, beta, learning_rate, optimizer))
+            #     else:
+            #         self.layers.append(Layer((input_dimensions, output_dimensions), i, activation_function, beta, learning_rate, optimizer))
+            # i += 1
+        self.layers.append(Layer((35, 30), 0, activation_function, beta, learning_rate, optimizer))
+        self.layers.append(Layer((30, 20), 1, activation_function, beta, learning_rate, optimizer))
+        self.layers.append(Layer((20, 10), 2, activation_function, beta, learning_rate, optimizer))
+        self.layers.append(Layer((10, 4), 3, activation_function, beta, learning_rate, optimizer))
+        self.layers.append(VariationalLayer((4, 2), 4, activation_function, beta, learning_rate, optimizer))
+        self.layers.append(Layer((2, 4), 5, activation_function, beta, learning_rate, optimizer))
+        self.layers.append(Layer((4, 10), 6, activation_function, beta, learning_rate, optimizer))
+        self.layers.append(Layer((10, 20), 7, activation_function, beta, learning_rate, optimizer))
+        self.layers.append(Layer((20, 30), 8, activation_function, beta, learning_rate, optimizer))
+        self.layers.append(Layer((30, 35), 9, activation_function, beta, learning_rate, optimizer))
 
         print(f'Layer: {self.layers[-1].weights.shape}')
             
@@ -35,7 +52,7 @@ class NeuralNetwork:
 
     def predict_from_latent_space(self, data_input):
         next_layer_input = data_input
-        for layer in self.layers[self.latent_layer:]:
+        for layer in self.layers[self.latent_layer + 1:]:
             next_layer_input = layer.forward(next_layer_input)
         return next_layer_input
 
@@ -86,17 +103,22 @@ class NeuralNetwork:
                 err = 0
                 # mu = np.random.randint(0, input_len)
                 for mu in range(input_len):
+                    # print(f'Input: {data_input[mu].shape} - mu: {mu}')
                     result = self.predict(data_input[mu])
                     err += calculate_error(result, expected_output[mu])
                     gradient = calculate_error_derivative(result, expected_output[mu])
 
-                    for layer in reversed(self.layers):
-                        gradient = layer.backward(gradient, iteration)
+                    for i, layer in enumerate(reversed(self.layers)):
+                        if i == self.latent_layer + 1:
+                            gradient = layer.backward(gradient, iteration, gradient)
+                        else:
+                            gradient = layer.backward(gradient, iteration)
 
                 error = err / len(data_input)
                             
                 if iteration % 500 == 0:
-                    pixel_error = self.calculate_pixel_error(data_input, expected_output)
+                    # print(f'Data Input: {data_input.shape}')
+                    pixel_error = self.calculate_pixel_error(data_input[0], expected_output)
                     max_pixel_error = max(pixel_error)
 
                     pixel_error = sum(pixel_error)
@@ -131,7 +153,9 @@ class NeuralNetwork:
         return self.min_error, iteration
     
     def calculate_pixel_error(self, data_input, expected_output):
-        results = self.predict(data_input)[0]
+        results = self.predict(data_input)
+
+        # print(f'Results: {results.shape} - Expected: {expected_output[0].shape}')
     
         errors = [get_different_pixel_count(clean_results(results[i]), expected_output[0][i]) for i in range(len(results))]
         return errors

@@ -17,7 +17,9 @@ def main():
     example_data_input = np.array(font_data)
     example_data_output = np.array(font_data)
 
-    neural_network = NeuralNetwork(config['network']['layers'],35, 2, config['network']['function'], config['network']['beta'], config['network']['learning_rate'], config['network']['optimizer'])
+    neural_network = NeuralNetwork(config['network']['layers'],35, 2, 
+                                   config['network']['function'], config['network']['beta'],
+                                   config['network']['learning_rate'], config['network']['optimizer'], variational=True)
 
     train = config['train']
 

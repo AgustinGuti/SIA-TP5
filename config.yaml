@@ -1,5 +1,5 @@
 network:
-  layers: [30, 20, 10, 5]
+  layers: [30, 20, 10]
   learning_rate: 0.1
   beta: 0.5
   function: "tan_h"
