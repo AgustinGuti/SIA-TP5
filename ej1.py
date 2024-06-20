@@ -3,44 +3,86 @@ import matplotlib.pyplot as plt
 import re
 import yaml
 import csv
+import copy
 import pandas as pd
 import matplotlib.animation as animation
 from Autoencoder import Autoencoder, calculate_error, get_different_pixel_count, clean_results
+from noise import salt_and_pepper_noise, gaussian_noise
 
 def main():
     # Open yaml config
     with open('config.yaml', 'r') as f:
         config = yaml.safe_load(f)
 
-    font_data, font_tags = parse_font_file('font.h')
-    example_data_input = np.array(font_data)
-    example_data_output = np.array(font_data)
-    neural_network = Autoencoder(config['network']['layers'],35, 2, config['network']['function'], config['network']['beta'], config['network']['learning_rate'], config['network']['optimizer'])
-    train_neural_network(neural_network, example_data_input, example_data_output, font_tags, config['train'])
-    
-    with open('error_history.csv', 'r') as f:
-        df = pd.read_csv('error_history.csv')
+    if config['denoising']['enable']:
+        denoising_tests()
+        
+    else:
+        
+        font_data, font_tags = parse_font_file('font.h')
+        example_data_input = np.array(font_data)
+        example_data_output = np.array(font_data)
+        neural_network = Autoencoder(config['network']['layers'],35, 2, config['network']['function'], config['network']['beta'], config['network']['learning_rate'], config['network']['optimizer'])
+        train_neural_network(neural_network, example_data_input, example_data_output, font_tags, config['train'])
+        
+        with open('error_history.csv', 'r') as f:
+            df = pd.read_csv('error_history.csv')
 
-    # generate_pixel_error_graphs(df)
+        # generate_pixel_error_graphs(df)
 
-    batch_size = example_data_input.shape[0]
-    num_complete_batches, remainder = divmod(len(example_data_input), batch_size)
-    batches = [example_data_input[i * batch_size:(i+1) + batch_size] for i in range(num_complete_batches)]
+        batch_size = example_data_input.shape[0]
+        num_complete_batches, remainder = divmod(len(example_data_input), batch_size)
+        batches = [example_data_input[i * batch_size:(i+1) + batch_size] for i in range(num_complete_batches)]
 
-    example_data_input = np.array(batches)
-    example_data_output = np.array(batches)
+        example_data_input = np.array(batches)
+        example_data_output = np.array(batches)
 
-    # predict_and_print(neural_network, example_data_input, example_data_output, font_tags)
+        # predict_and_print(neural_network, example_data_input, example_data_output, font_tags)
 
-    latent_results = neural_network.predict_latent_space(example_data_input)
-    generate_latent_values_graph(neural_network, example_data_input, font_tags)
-    
-    if(config['new_letter']['generate']):
-        generate_new_letter(config, neural_network)
-    
-    generate_error_map(neural_network, example_data_input, font_tags, latent_results)
+        latent_results = neural_network.predict_latent_space(example_data_input)
+        generate_latent_values_graph(neural_network, example_data_input, font_tags)
+        
+        if(config['new_letter']['generate']):
+            generate_new_letter(config, neural_network)
+        
+        generate_error_map(neural_network, example_data_input, font_tags, latent_results)
 
     plt.show()
+
+def denoising_tests():
+    # Open yaml config
+    with open('config.yaml', 'r') as f:
+        config = yaml.safe_load(f)
+
+    font_data, font_tags = parse_font_file('font.h')
+    example_data_input = np.array(font_data)
+
+    data_input = copy.deepcopy(example_data_input)
+    if config['denoising']['noise_type'] == 'salt_and_pepper':
+        data_input = [[salt_and_pepper_noise(data_input[i], config['denoising']['noise_level'], shape=(7, 5)) for i in range(len(example_data_input))] for _ in range(5)]
+    elif config['denoising']['noise_type'] == 'gaussian':
+        data_input = [[gaussian_noise(data_input[i], config['denoising']['noise_level'], shape=(7, 5)) for i in range(len(example_data_input))] for _ in range(5)]
+
+    data_input = np.vstack(data_input)
+
+    example_data_output = np.array(font_data)
+    neural_network = Autoencoder(config['network']['layers'],35, 2, config['network']['function'], config['network']['beta'], config['network']['learning_rate'], config['network']['optimizer'])
+    train_neural_network(neural_network, data_input, example_data_output, font_tags, config['train'])
+
+    new_data_input = copy.deepcopy(example_data_input)
+    if config['denoising']['noise_type'] == 'salt_and_pepper':
+        new_data_input = [salt_and_pepper_noise(new_data_input[i], config['denoising']['noise_level'], shape=(7, 5)) for i in range(len(example_data_input))]
+    elif config['denoising']['noise_type'] == 'gaussian':
+        new_data_input = [gaussian_noise(new_data_input[i], config['denoising']['noise_level'], shape=(7, 5)) for i in range(len(example_data_input))]
+    
+    new_data_input = np.array([new_data_input])
+    # predict_and_print(neural_network, new_data_input, [example_data_output], font_tags, show_original=True)
+
+    latent_results = neural_network.predict_latent_space(new_data_input)
+    generate_error_map(neural_network, new_data_input, font_tags, latent_results)
+
+    return
+
 
 def parse_font_file(filename):
     font_data = []
@@ -163,7 +205,7 @@ def generate_pixel_error_graphs(df):
     plt.title(f'Max Pixel Training Error over Epochs')
     plt.savefig('results/max_pixel_error.png')
     
-def predict_and_print(neural_network, example_data_input, example_data_output, font_tags):
+def predict_and_print(neural_network: Autoencoder, example_data_input, example_data_output, font_tags, show_original=False):
     total_error = 0
     for i, input_data in enumerate(example_data_input[0]):
         result = neural_network.predict(input_data)
@@ -173,13 +215,15 @@ def predict_and_print(neural_network, example_data_input, example_data_output, f
         print(f'Letter: {letter} - Pixel Error: {pixel_error}')
         total_error += pixel_error
 
+        if show_original:
+            print_number(f'{letter}_expected', example_data_output[0][i])
         print_number(letter, result)
         print_number(f'{letter}_clean', clean_results(result))
-        print_number(f'{letter}_expected', input_data)
+        print_number(f'{letter}_input', input_data)
 
     print(f'Total error: {total_error}')
 
-def train_neural_network(neural_network, example_data_input, example_data_output, font_tags, train):
+def train_neural_network(neural_network: Autoencoder, example_data_input, example_data_output, font_tags, train):
     if train:
         min_error, iterations = neural_network.train(example_data_input, example_data_output, 1000000)
         print(f'Training finished in {iterations} iterations')
