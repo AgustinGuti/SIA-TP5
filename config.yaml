@@ -12,3 +12,7 @@ best_networks:
       function: "tan_h"
       optimizer: "adam"
 train: False
+new_letter:
+  generate: False
+  x: 0.76
+  y: 0.7
