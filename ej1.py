@@ -58,14 +58,16 @@ def denoising_tests():
     example_data_input = np.array(font_data)
 
     data_input = copy.deepcopy(example_data_input)
+
+    repetitions = 5
     if config['denoising']['noise_type'] == 'salt_and_pepper':
-        data_input = [[salt_and_pepper_noise(data_input[i], config['denoising']['noise_level'], shape=(7, 5)) for i in range(len(example_data_input))] for _ in range(5)]
+        data_input = [[salt_and_pepper_noise(data_input[i], config['denoising']['noise_level'], shape=(7, 5)) for i in range(len(example_data_input))] for _ in range(repetitions)]
     elif config['denoising']['noise_type'] == 'gaussian':
-        data_input = [[gaussian_noise(data_input[i], config['denoising']['noise_level'], shape=(7, 5)) for i in range(len(example_data_input))] for _ in range(5)]
+        data_input = [[gaussian_noise(data_input[i], config['denoising']['noise_level'], shape=(7, 5)) for i in range(len(example_data_input))] for _ in range(repetitions)]
 
     data_input = np.vstack(data_input)
 
-    example_data_output = np.array(font_data)
+    example_data_output = np.vstack([font_data for _ in range(repetitions)])
     neural_network = Autoencoder(config['network']['layers'],35, 2, config['network']['function'], config['network']['beta'], config['network']['learning_rate'], config['network']['optimizer'])
     train_neural_network(neural_network, data_input, example_data_output, font_tags, config['train'])
 
@@ -79,7 +81,7 @@ def denoising_tests():
     # predict_and_print(neural_network, new_data_input, [example_data_output], font_tags, show_original=True)
 
     latent_results = neural_network.predict_latent_space(new_data_input)
-    generate_error_map(neural_network, new_data_input, font_tags, latent_results)
+    generate_error_map(neural_network, [font_data], font_tags, latent_results)
 
     return
 
@@ -227,7 +229,7 @@ def train_neural_network(neural_network: Autoencoder, example_data_input, exampl
     if train:
         min_error, iterations = neural_network.train(example_data_input, example_data_output, 1000000)
         print(f'Training finished in {iterations} iterations')
-        neural_network.dump_weights_to_file('weights.txt')    
+        neural_network.dump_weights_to_file('weights')    
     else:
         neural_network.load_weights_from_file('last_weights')
 

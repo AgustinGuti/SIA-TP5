@@ -162,6 +162,7 @@ cython_debug/
 #.idea/
 
 last_weights*
+weights*.txt
 
 results/*
 

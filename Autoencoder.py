@@ -50,7 +50,12 @@ class Autoencoder:
         batches = [data_input[i * batch_size:(i+1) + batch_size] for i in range(num_complete_batches)]
 
         data_input = np.array(batches)
-        expected_output = np.array(batches)
+
+        output_batch_size = expected_output.shape[0]
+        num_complete_batches, remainder = divmod(len(expected_output), output_batch_size)
+        output_batches = [expected_output[i * output_batch_size:(i+1) + output_batch_size] for i in range(num_complete_batches)]
+
+        expected_output = np.array(output_batches)
 
         input_len = len(data_input)
 
