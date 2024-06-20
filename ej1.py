@@ -5,7 +5,7 @@ import yaml
 import csv
 import pandas as pd
 import matplotlib.animation as animation
-from NeuralNetwork import NeuralNetwork, calculate_error, get_different_pixel_count, clean_results
+from Autoencoder import Autoencoder, calculate_error, get_different_pixel_count, clean_results
 
 def main():
     # Open yaml config
@@ -13,18 +13,15 @@ def main():
         config = yaml.safe_load(f)
 
     font_data, font_tags = parse_font_file('font.h')
-
     example_data_input = np.array(font_data)
     example_data_output = np.array(font_data)
-
-    neural_network = NeuralNetwork(config['network']['layers'],35, 2, config['network']['function'], config['network']['beta'], config['network']['learning_rate'], config['network']['optimizer'])
-
+    neural_network = Autoencoder(config['network']['layers'],35, 2, config['network']['function'], config['network']['beta'], config['network']['learning_rate'], config['network']['optimizer'])
     train_neural_network(neural_network, example_data_input, example_data_output, font_tags, config['train'])
     
     with open('error_history.csv', 'r') as f:
         df = pd.read_csv('error_history.csv')
 
-    generate_pixel_error_graphs(df)
+    # generate_pixel_error_graphs(df)
 
     batch_size = example_data_input.shape[0]
     num_complete_batches, remainder = divmod(len(example_data_input), batch_size)
@@ -33,7 +30,7 @@ def main():
     example_data_input = np.array(batches)
     example_data_output = np.array(batches)
 
-    predict_and_print(neural_network, example_data_input, example_data_output, font_tags)
+    # predict_and_print(neural_network, example_data_input, example_data_output, font_tags)
 
     latent_results = neural_network.predict_latent_space(example_data_input)
     generate_latent_values_graph(neural_network, example_data_input, font_tags)
@@ -108,29 +105,12 @@ def generate_error_map(neural_network, example_data_input, font_tags, latent_res
     min_latent_y = min([x[1] for x in latent_results[0]]) - 0.1
     max_latent_y = max([x[1] for x in latent_results[0]]) + 0.1
 
-
     grid_size = 100
     x = np.linspace(min_latent_x, max_latent_x, grid_size)
     y = np.linspace(min_latent_y, max_latent_y, grid_size)
     X, Y = np.meshgrid(x, y)
 
     Z = np.array([[neural_network.predict_from_latent_space([x_val, y_val]) for y_val in y] for x_val in x])
-
-
-    errors = np.array([[find_error_to_letter(i, j, 'm', font_tags, example_data_input, Z) for i in range(grid_size)] for j in range(grid_size)])
-
-    fig = plt.figure()
-    ax = fig.add_subplot(111)
-
-    cp = ax.contourf(X, Y, errors, levels=3,  cmap='coolwarm')
-    fig.colorbar(cp)
-    plt.xlabel('X')
-    plt.ylabel('Y')
-    plt.title('Error')
-    plt.scatter([x[0] for x in latent_results[0]], [x[1] for x in latent_results[0]], color='white')
-    for i, txt in enumerate(font_tags):
-        plt.text(latent_results[0][i][0], latent_results[0][i][1], txt)
-    plt.savefig('results/error_map1.png')
     
     errors = np.array([[find_less_error(i, j, font_tags, example_data_input, Z)[1] for i in range(grid_size)] for j in range(grid_size)])
 
@@ -141,7 +121,7 @@ def generate_error_map(neural_network, example_data_input, font_tags, latent_res
     fig.colorbar(cp)
     plt.xlabel('X')
     plt.ylabel('Y')
-    plt.title('Error')
+    plt.title('Pixel difference to closest letter')
     plt.scatter([x[0] for x in latent_results[0]], [x[1] for x in latent_results[0]], color='white')
     for i, txt in enumerate(font_tags):
         plt.text(latent_results[0][i][0], latent_results[0][i][1], txt)
@@ -205,7 +185,7 @@ def train_neural_network(neural_network, example_data_input, example_data_output
         print(f'Training finished in {iterations} iterations')
         neural_network.dump_weights_to_file('weights.txt')    
     else:
-        neural_network.load_weights_from_file('last_weights.txt')
+        neural_network.load_weights_from_file('last_weights')
 
 if __name__ == "__main__":
     main()

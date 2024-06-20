@@ -1,5 +1,5 @@
 import numpy as np
-from numba import jit
+import json
 from ActivationFunctions import compute_activation, compute_activation_prime
 
 class Layer:
@@ -53,6 +53,23 @@ class Layer:
         np.subtract(self.weights, self.weight_acum, out=self.weights)
         self.weight_acum = 0
         self.count = 0
+
+    def dump_weights_to_file(self, filename):
+        weights = self.weights.tolist()
+        bias = self.biases.tolist()
+        data = {
+            'weights': weights,
+            'biases': bias
+        }
+        with open(filename, 'w') as f:
+            json.dump(data, f)
+
+    def load_weights_from_file(self, filename):
+        with open(filename, 'r') as f:
+            data = json.load(f)
+        self.weights = np.array(data['weights'])
+        self.biases = np.array(data['biases'])
+
 
 class AdamParams:
     def __init__(self, beta1=0.9, beta2=0.999, epsilon=1e-8):

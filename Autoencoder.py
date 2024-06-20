@@ -3,64 +3,44 @@ import sys
 import json
 import time
 from Layer import Layer  
+from MultiLayerPerceptron import MLP
 
-class NeuralNetwork:
+class Autoencoder:
     def __init__(self, layers: list[int], input_dimensions: int, output_dimensions: int, activation_function='linear', beta=100, learning_rate=0.01, optimizer=''):
         
         self.latent_layer = len(layers) + 1
-        all_layers = [input_dimensions] + layers + [output_dimensions] + [layer for layer in reversed(layers)] + [input_dimensions]
-        self.layers: list[Layer] = []
 
-        self.input_dimensions = input_dimensions
+        self.encoder: MLP = MLP([input_dimensions] + layers, input_dimensions, output_dimensions, activation_function, beta, learning_rate, optimizer)
+        self.latent: Layer = Layer((layers[-1], output_dimensions), len(layers), activation_function, beta, learning_rate, optimizer)
+        self.decoder: MLP = MLP([output_dimensions] + list(reversed(layers)) + [input_dimensions], output_dimensions, input_dimensions, activation_function, beta, learning_rate, optimizer, id_offset=len(layers)+1)
 
-        i = 0   
-        while i < (len(all_layers) - 1):
-            input_dimensions = all_layers[i]
-            output_dimensions = all_layers[i + 1]
-
-            self.layers.append(Layer((input_dimensions, output_dimensions), i, activation_function, beta, learning_rate, optimizer))
-            i += 1
-
-        print(f'Layer: {self.layers[-1].weights.shape}')
-            
+        self.input_dimensions = input_dimensions            
         self.min_error = sys.maxsize
 
     def predict_latent_space(self, data_input):
-        next_layer_input = data_input
-        for i, layer in enumerate(self.layers):
-            next_layer_input = layer.forward(next_layer_input)
-            if i == self.latent_layer - 1:
-                return next_layer_input
-        return next_layer_input
+        encoder_output = self.encoder.predict(data_input)
+        latent_output = self.latent.forward(encoder_output)
+        return latent_output
 
     def predict_from_latent_space(self, data_input):
-        next_layer_input = data_input
-        for layer in self.layers[self.latent_layer:]:
-            next_layer_input = layer.forward(next_layer_input)
-        return next_layer_input
+        decoder_output = self.decoder.predict(data_input)
+        return decoder_output
 
     def predict(self, data_input):
-        next_layer_input = data_input
-        for layer in self.layers:
-            next_layer_input = layer.forward(next_layer_input)
-        return next_layer_input
+        encoder_output = self.encoder.predict(data_input)
+        latent_output = self.latent.forward(encoder_output)
+        decoder_output = self.decoder.predict(latent_output)
+        return decoder_output
     
     def dump_weights_to_file(self, filename):
-        weights = [layer.weights.tolist() for layer in self.layers]
-        bias = [layer.biases.tolist() for layer in self.layers]
-        data = {
-            'weights': weights,
-            'biases': bias
-        }
-        with open(filename, 'w') as f:
-            json.dump(data, f)
+        self.encoder.dump_weights_to_file(f'{filename}_encoder.txt')
+        self.latent.dump_weights_to_file(f'{filename}_latent.txt')
+        self.decoder.dump_weights_to_file(f'{filename}_decoder.txt')
 
     def load_weights_from_file(self, filename):
-        with open(filename, 'r') as f:
-            data = json.load(f)
-        for i, layer in enumerate(self.layers):
-            layer.weights = np.array(data['weights'][i])
-            layer.biases = np.array(data['biases'][i])
+        self.encoder.load_weights_from_file(f'{filename}_encoder.txt')
+        self.latent.load_weights_from_file(f'{filename}_latent.txt')
+        self.decoder.load_weights_from_file(f'{filename}_decoder.txt')
     
     def train(self, data_input, expected_output, iters):
         iteration = 0
@@ -90,8 +70,9 @@ class NeuralNetwork:
                     err += calculate_error(result, expected_output[mu])
                     gradient = calculate_error_derivative(result, expected_output[mu])
 
-                    for layer in reversed(self.layers):
-                        gradient = layer.backward(gradient, iteration)
+                    delta_outputs = self.decoder.backward(gradient, iteration)
+                    delta_latent = self.latent.backward(delta_outputs, iteration)
+                    self.encoder.backward(delta_latent, iteration)
 
                 error = err / len(data_input)
                             
@@ -109,12 +90,12 @@ class NeuralNetwork:
 
                     if max_pixel_error < best_pixel_error:
                         best_pixel_error = max_pixel_error
-                        self.dump_weights_to_file('last_weights.txt')
+                        self.dump_weights_to_file('last_weights')
 
                     if pixel_error < best_pixel_error_sum:
                         best_pixel_error_sum = pixel_error
                         if max_pixel_error == best_pixel_error:
-                            self.dump_weights_to_file('last_weights.txt')
+                            self.dump_weights_to_file('last_weights')
 
   
 
@@ -124,8 +105,9 @@ class NeuralNetwork:
                 if pixel_error == 0:
                     break
 
-                for layer in reversed(self.layers):
-                    layer.update()
+                self.encoder.update()
+                self.latent.update()
+                self.decoder.update()
 
                 iteration += 1
         return self.min_error, iteration
