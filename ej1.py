@@ -16,9 +16,7 @@ def main():
 
     if config['denoising']['enable']:
         denoising_tests()
-        
     else:
-        
         font_data, font_tags = parse_font_file('font.h')
         example_data_input = np.array(font_data)
         example_data_output = np.array(font_data)

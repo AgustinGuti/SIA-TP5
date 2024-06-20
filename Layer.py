@@ -3,7 +3,7 @@ import json
 from ActivationFunctions import compute_activation, compute_activation_prime
 
 class Layer:
-    def __init__(self, dimensions, id, activation_function, beta, learning_rate, optimizer):
+    def __init__(self, dimensions, id, activation_function, beta, learning_rate, optimizer, use_backtracking_as_final_gradient=False):
         self.id = id
         self.weights = np.random.randn(dimensions[0], dimensions[1])
         self.biases = np.random.randn(dimensions[0], 1)
@@ -27,6 +27,7 @@ class Layer:
         self.last_input = None
 
         self.weights_error = np.empty_like(self.weights)
+        self.use_backtracking_as_final_gradient = use_backtracking_as_final_gradient
 
         print(f'Layer {self.id} - weights shape: {self.weights.shape}')
     
@@ -37,15 +38,16 @@ class Layer:
         self.last_output = compute_activation(self.activation_function, self.last_excitement, self.beta)
         return self.last_output
     
-    def backward(self, gradient, iteration, final_gradient=None):
+    def backward(self, gradient, iteration):
         # print(f'Layer {self.id} - gradient shape: {gradient.shape} - is None: {final_gradient is None}')
-        if final_gradient is not None:
-            self.weight_acum += final_gradient * self.learning_rate / (1 + 0.001 * iteration)
-            np.dot(self.last_input.T, final_gradient, out=self.weights_error)
+        # if final_gradient is not None:
+        #     self.weight_acum += final_gradient * self.learning_rate / (1 + 0.001 * iteration)
+        #     np.dot(self.last_input.T, final_gradient, out=self.weights_error)
             
-            return np.dot(final_gradient, self.weights.T)
+        #     return np.dot(final_gradient, self.weights.T)
         
-        np.multiply(compute_activation_prime(self.activation_function, self.last_excitement, self.beta), gradient, out=gradient)
+        if not self.use_backtracking_as_final_gradient:
+            np.multiply(compute_activation_prime(self.activation_function, self.last_excitement, self.beta), gradient, out=gradient)
         
         np.dot(self.last_input.T, gradient, out=self.weights_error)
         new_gradient = np.dot(gradient, self.weights.T)
@@ -53,7 +55,7 @@ class Layer:
         if self.optimizer == 'adam':
             self.adam_params.get_delta(iteration, self.weights_error, location=self.weights_error)
 
-        self.weight_acum += self.weights_error * self.learning_rate / (1 + 0.001 * iteration)
+        self.weight_acum += self.weights_error * self.learning_rate # / (1 + 0.001 * iteration)
         # if iteration % 1000 == 0 and self.id == 0:
         #     print(f'{self.learning_rate / (1 + 0.001 * iteration)}')
 
@@ -84,7 +86,7 @@ class Layer:
 class VariationalLayer(Layer):
     def __init__(self, dimensions, id, activation_function, beta, learning_rate, optimizer):
         super().__init__(dimensions, id, activation_function, beta, learning_rate, optimizer)
-        print(f'Layer {self.id} - weights shape: {self.weights.shape}')
+        print(f'^^^ Variational ^^^')
     
     def forward(self, data):
         mean = data[:, : data.shape[1] // 2]
@@ -99,37 +101,16 @@ class VariationalLayer(Layer):
         self.last_eps = eps
         return np.array(z)
     
-    def backward(self, gradient, iteration, final_gradient=None):
+    def backward(self, gradient, iteration):
         
         # print(f'Layer {self.id} - gradient shape: {gradient.shape} - VAE')
 
-        # dz_dmean = np.ones([self.last_delta_size, self.latent_space_size])
-        #     dz_dstd = eps * \
-        #         np.ones([self.last_delta_size, self.latent_space_size])
+        dE_mu = gradient
+        dE_sigma = self.last_eps * gradient
 
-        #     mean_error = np.dot(last_delta, dz_dmean)
-        #     std_error = np.dot(last_delta, dz_dstd)
-
-        #     encoder_output_error = np.concatenate((mean_error, std_error), axis=1)
-
-        dz_dmean = np.ones([2, 2])
-        dz_dstd = self.last_eps * np.ones([2, 2])
-
-        mean_error = np.dot(gradient, dz_dmean)
-        std_error = np.dot(gradient, dz_dstd)
-
-        encoder_output_error = np.concatenate((mean_error, std_error), axis=1)
+        encoder_output_error = np.concatenate((dE_mu, dE_sigma), axis=1)
 
         return encoder_output_error
-
-        dE_dz_a = gradient[0]
-        dE_deps_a = gradient[0] * self.last_eps
-
-        dE_dz_b = gradient[1]
-        dE_deps_b = gradient[1] * self.last_eps
-
-        return np.array([dE_dz_a, dE_deps_a, dE_dz_b, dE_deps_b])
-
     
     def update(self):
         np.subtract(self.weights, self.weight_acum, out=self.weights)
@@ -138,7 +119,6 @@ class VariationalLayer(Layer):
 
 def reparametrization_trick(mean, std):
     eps = np.random.normal(0, 1)
-    # print(f'mean shape: {mean.shape} - std shape: {std.shape}')
     z = mean + std * eps
     return z, eps
 

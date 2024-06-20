@@ -2,16 +2,20 @@ import numpy as np
 import sys
 import json
 import time
-from Layer import Layer  
+from Layer import Layer, VariationalLayer
 from MultiLayerPerceptron import MLP
 
 class Autoencoder:
-    def __init__(self, layers: list[int], input_dimensions: int, output_dimensions: int, activation_function='linear', beta=100, learning_rate=0.01, optimizer=''):
+    def __init__(self, layers: list[int], input_dimensions: int, output_dimensions: int, activation_function='linear', beta=100, learning_rate=0.01, optimizer='', variational=False):
         
         self.latent_layer = len(layers) + 1
 
         self.encoder: MLP = MLP([input_dimensions] + layers, input_dimensions, output_dimensions, activation_function, beta, learning_rate, optimizer)
-        self.latent: Layer = Layer((layers[-1], output_dimensions), len(layers), activation_function, beta, learning_rate, optimizer)
+        self.encoder.layers[-1].use_backtracking_as_final_gradient = True
+        if variational:
+            self.latent: VariationalLayer = VariationalLayer((layers[-1], output_dimensions), len(layers), activation_function, beta, learning_rate, optimizer)
+        else:
+            self.latent: Layer = Layer((layers[-1], output_dimensions), len(layers), activation_function, beta, learning_rate, optimizer)
         self.decoder: MLP = MLP([output_dimensions] + list(reversed(layers)) + [input_dimensions], output_dimensions, input_dimensions, activation_function, beta, learning_rate, optimizer, id_offset=len(layers)+1)
 
         self.input_dimensions = input_dimensions            
@@ -82,7 +86,7 @@ class Autoencoder:
                 error = err / len(data_input)
                             
                 if iteration % 500 == 0:
-                    pixel_error = self.calculate_pixel_error(data_input, expected_output)
+                    pixel_error = self.calculate_pixel_error(data_input[0], expected_output[0])
                     max_pixel_error = max(pixel_error)
 
                     pixel_error = sum(pixel_error)
@@ -118,9 +122,9 @@ class Autoencoder:
         return self.min_error, iteration
     
     def calculate_pixel_error(self, data_input, expected_output):
-        results = self.predict(data_input)[0]
+        results = self.predict(data_input)
     
-        errors = [get_different_pixel_count(clean_results(results[i]), expected_output[0][i]) for i in range(len(results))]
+        errors = [get_different_pixel_count(clean_results(results[i]), expected_output[i]) for i in range(len(results))]
         return errors
 
 def calculate_error(predictions, expected_output):
