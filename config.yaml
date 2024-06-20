@@ -12,3 +12,11 @@ best_networks:
       function: "tan_h"
       optimizer: "adam"
 train: False
+new_letter:
+  generate: False
+  x: 0.76
+  y: 0.7
+denoising:
+  enable: True
+  noise_type: "gaussian" # "gaussian" or "salt_and_pepper"
+  noise_level: 0.1
