@@ -1,8 +1,8 @@
 network:
   layers: [30, 20, 10, 4]
-  learning_rate: 0.01
+  learning_rate: 0.001
   beta: 0.5
-  function: "tan_h"
+  function: "sigmoid"
   optimizer: "adam"
 best_networks:
   - net1:
@@ -12,17 +12,18 @@ best_networks:
       function: "tan_h"
       optimizer: "adam"
 run_config:
-  train: False
-  continue: True
-test_alphabet:
-  generate: False
+  train: True
+  continue: False
+test:
+  generate_alphabet: False
+  show_errors_graph: False
 new_letter:
-  generate: True
-  x: -1.3
-  y: -0.2
+  generate: False
+  x: 0
+  y: 0.1
 denoising:
   enable: False
   noise_type: "gaussian" # "gaussian" or "salt_and_pepper"
   noise_level: 0.1
 variational:
-  enable: True
+  enable: False

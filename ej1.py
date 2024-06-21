@@ -21,7 +21,7 @@ def main():
         example_data_input = np.array(font_data)
         example_data_output = np.array(font_data)
         neural_network = Autoencoder(config['network']['layers'],35, 2, config['network']['function'], config['network']['beta'], config['network']['learning_rate'], config['network']['optimizer'])
-        train_neural_network(neural_network, example_data_input, example_data_output, font_tags, config['train'])
+        train_neural_network(neural_network, example_data_input, example_data_output, font_tags, config['run_config'])
         
         with open('error_history.csv', 'r') as f:
             df = pd.read_csv('error_history.csv')
@@ -44,6 +44,8 @@ def main():
             generate_new_letter(config, neural_network)
         
         generate_error_map(neural_network, example_data_input, font_tags, latent_results)
+
+        latent_space_data_generation(neural_network, fig_size=(7, 5))
 
     plt.show()
 
@@ -183,6 +185,43 @@ def find_less_error(x, y, font_tags, example_data_input, Z):
             letter_index = font_tags.index(letter)
     return letter_index, min_error
 
+
+def latent_space_data_generation(neural_network, fig_size=(7, 5)):
+    min_latent_x = 0
+    max_latent_x = 1
+
+    min_latent_y = 0
+    max_latent_y = 1
+
+    grid_size = 15
+    x = np.linspace(min_latent_x, max_latent_x, grid_size)
+    y = np.linspace(min_latent_y, max_latent_y, grid_size)
+
+    Z = np.array([[neural_network.predict_from_latent_space(np.array([x_val, y_val])) for y_val in y] for x_val in x])
+    figure_size_x, figure_size_y = fig_size
+
+    plot_figures(Z, grid_size, figure_size_x, figure_size_y)
+
+    Z_clean = np.array([[clean_results(Z[i][j]) for j in range(len(Z[i]))] for i in range(len(Z))])
+
+    plot_figures(Z_clean, grid_size, figure_size_x, figure_size_y)
+
+
+def plot_figures(data, grid_size, figure_size_x, figure_size_y):
+    figure = np.zeros((figure_size_x * grid_size, figure_size_y * grid_size))
+    # TODO fix 90 degree rotation
+    for i in range(len(data)):
+        for j in range(len(data[i])):
+            target_x_start = (i) * figure_size_x
+            target_x_end = (i + 1) * figure_size_x
+            target_y_start = (j) * figure_size_y
+            target_y_end = (j + 1) * figure_size_y
+            figure[target_x_start:target_x_end, target_y_start:target_y_end] = data[i][j].reshape(figure_size_x, figure_size_y)
+
+    plt.figure(figsize=(15, 15))
+    plt.imshow(figure, cmap='gray_r')
+    plt.axis('off')
+
 def generate_pixel_error_graphs(df):
     plt.figure()
     plt.plot(df['iteration'], df['pixel_error'])
@@ -223,8 +262,10 @@ def predict_and_print(neural_network: Autoencoder, example_data_input, example_d
 
     print(f'Total error: {total_error}')
 
-def train_neural_network(neural_network: Autoencoder, example_data_input, example_data_output, font_tags, train):
-    if train:
+def train_neural_network(neural_network: Autoencoder, example_data_input, example_data_output, font_tags, run_config):
+    if run_config['train']:
+        if run_config['continue']:
+            neural_network.load_weights_from_file('last_weights')
         min_error, iterations = neural_network.train(example_data_input, example_data_output, 1000000)
         print(f'Training finished in {iterations} iterations')
         neural_network.dump_weights_to_file('weights')    

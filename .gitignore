@@ -169,3 +169,4 @@ results/*
 !results/.gitkeep
 !results/weights/.gitkeep
 !results/letters/.gitkeep
+!results/emojis/.gitkeep

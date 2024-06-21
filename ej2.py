@@ -13,12 +13,28 @@ def main():
     variational_tests()
     plt.show()
 
+def parse_emoji_file(filename):
+    emoji_tags = []
+
+    matrix = []
+    emoji = []
+    with open(filename) as f:
+        for line in f:
+            if (len(line.strip().split(' ')) == 1):
+                matrix.append(np.array(emoji).flatten())
+                emoji = []
+                emoji_tags.append(f'{len(emoji_tags)}')
+            else:
+                emoji.append([int(bit) for bit in line.strip().split(' ')])
+    matrix = np.array(matrix)
+    return matrix, emoji_tags            
+
 def parse_font_file(filename):
     font_data = []
     font_tags = []
     with open(filename, 'r') as f:
         for line in f:
-            match = re.search(r'\{(.+?)\}', line)  # match content inside braces
+            match = re.search(r'\{(.+?)\}', line) 
             if match:
                 # split the matched string by comma, convert each item to binary array
                 font_data.append([int(x, 16) for x in match.group(1).split(',')])
@@ -33,7 +49,7 @@ def parse_font_file(filename):
     return font_data, font_tags
 
 
-def print_number(title, data, dims=(7,5), folder='results/letters'):
+def print_number(title, data, dims=(12,12), folder='results/emojis'):
     # Sample 2D list
     # Convert the list of lists to a numpy array
     array_data = np.array(data).reshape(dims[0], dims[1])
@@ -68,6 +84,12 @@ def generate_error_map(neural_network, example_data_input, font_tags, latent_res
 
     min_latent_y = min([x[1] for x in latent_results]) - 0.1
     max_latent_y = max([x[1] for x in latent_results]) + 0.1
+
+    min_latent_x = 0 - 0.1
+    max_latent_x = 1 + 0.1
+
+    min_latent_y = 0 -0.1
+    max_latent_y = 1  +0.1
 
     grid_size = 100
     x = np.linspace(min_latent_x, max_latent_x, grid_size)
@@ -162,21 +184,62 @@ def generate_new_letter(config, neural_network):
     print_number(f'new_letter_{new_input[0]}_{new_input[1]}', result, folder='results')
     print_number(f'new_letter_{new_input[0]}_{new_input[1]}_clean', clean_results(result), folder='results')
 
+def latent_space_data_generation(neural_network, fig_size=(12, 12)):
+    min_latent_x = 0
+    max_latent_x = 1
+
+    min_latent_y = 0
+    max_latent_y = 1
+
+    grid_size = 15
+    x = np.linspace(min_latent_x, max_latent_x, grid_size)
+    y = np.linspace(min_latent_y, max_latent_y, grid_size)
+
+    Z = np.array([[neural_network.predict_from_latent_space(np.array([x_val, y_val])) for y_val in y] for x_val in x])
+    figure_size_x, figure_size_y = fig_size
+
+    plot_figures(Z, grid_size, figure_size_x, figure_size_y)
+
+    Z_clean = np.array([[clean_results(Z[i][j]) for j in range(len(Z[i]))] for i in range(len(Z))])
+
+    plot_figures(Z_clean, grid_size, figure_size_x, figure_size_y)
+
+
+def plot_figures(data, grid_size, figure_size_x, figure_size_y):
+    figure = np.zeros((figure_size_x * grid_size, figure_size_y * grid_size))
+    # TODO fix 90 degree rotation
+    for i in range(len(data)):
+        for j in range(len(data[i])):
+            target_x_start = (i) * figure_size_x
+            target_x_end = (i + 1) * figure_size_x
+            target_y_start = (j) * figure_size_y
+            target_y_end = (j + 1) * figure_size_y
+            figure[target_x_start:target_x_end, target_y_start:target_y_end] = data[i][j].reshape(figure_size_x, figure_size_y)
+
+    plt.figure(figsize=(15, 15))
+    plt.imshow(figure, cmap='gray_r')
+    plt.axis('off')
+
 def variational_tests():
 
     with open('config.yaml', 'r') as f:
         config = yaml.safe_load(f)
 
-    font_data, font_tags = parse_font_file('font.h')
+    font_data, font_tags = parse_emoji_file('emojis.txt')
+    # font_data, font_tags = parse_font_file('font.h')
+
     example_data_input = np.array(font_data)
+    print(example_data_input.shape)
     example_data_output = np.array(font_data)
-    neural_network = Autoencoder(config['network']['layers'],35, 2, config['network']['function'], config['network']['beta'], config['network']['learning_rate'], config['network']['optimizer'], variational=True)
+    data_size = len(example_data_input[0])
+    neural_network = Autoencoder(config['network']['layers'], data_size, 2, config['network']['function'], config['network']['beta'], config['network']['learning_rate'], config['network']['optimizer'], variational=True)
     train_neural_network(neural_network, example_data_input, example_data_output, font_tags, config['run_config'])
     
-    with open('error_history.csv', 'r') as f:
-        df = pd.read_csv('error_history.csv')
+    if config['test']['show_errors_graph']:
+        with open('error_history.csv', 'r') as f:
+            df = pd.read_csv('error_history.csv')
 
-    generate_pixel_error_graphs(df)
+        generate_pixel_error_graphs(df)
 
     batch_size = example_data_input.shape[0]
     num_complete_batches, remainder = divmod(len(example_data_input), batch_size)
@@ -185,7 +248,7 @@ def variational_tests():
     example_data_input = np.array(batches)
     example_data_output = np.array(batches)
 
-    if config['test_alphabet']['generate']:
+    if config['test']['generate_alphabet']:
         predict_and_print(neural_network, example_data_input, example_data_output, font_tags)
 
     latent_results = neural_network.predict_latent_space(example_data_input[0])
@@ -195,6 +258,8 @@ def variational_tests():
 
     if(config['new_letter']['generate']):
         generate_new_letter(config, neural_network)
+
+    latent_space_data_generation(neural_network, fig_size=(12, 12))
 
 if __name__ == "__main__":
     main()

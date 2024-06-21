@@ -89,17 +89,13 @@ class VariationalLayer(Layer):
         print(f'^^^ Variational ^^^')
     
     def forward(self, data):
-        mean = data[:, : data.shape[1] // 2]
-        std = data[:, data.shape[1] // 2:]
+        self.mean = data[:, : data.shape[1] // 2]
+        self.std = data[:, data.shape[1] // 2:]
 
-        self.last_output = data
-
-        # print(f'mean shape: {mean.shape} - std shape: {std.shape}')
-
-        z, eps = reparametrization_trick(mean, std)
-        # print(f'z shape: {z.shape}')
+        z, eps = reparametrization_trick(self.mean, self.std)
         self.last_eps = eps
-        return np.array(z)
+        self.last_output = z
+        return np.array(z), self.mean, self.std
     
     def backward(self, gradient, iteration):
         
@@ -108,9 +104,15 @@ class VariationalLayer(Layer):
         dE_mu = gradient
         dE_sigma = self.last_eps * gradient
 
-        encoder_output_error = np.concatenate((dE_mu, dE_sigma), axis=1)
+        # KL divergence
+        dKL_dmu = self.mean
+        dKL_dsigma = 0.5 * (np.exp(0.5 * self.std) - 1)
 
-        return encoder_output_error
+        total_error = np.concatenate((dE_mu + dKL_dmu * 0, dE_sigma + dKL_dsigma * 0), axis=1)
+
+        # encoder_output_error = np.concatenate((dE_mu, dE_sigma), axis=1)
+
+        return total_error
     
     def update(self):
         np.subtract(self.weights, self.weight_acum, out=self.weights)
