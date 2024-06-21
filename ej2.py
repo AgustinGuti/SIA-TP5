@@ -225,7 +225,7 @@ def variational_tests():
     with open('config.yaml', 'r') as f:
         config = yaml.safe_load(f)
 
-    font_data, font_tags = parse_emoji_file('emojis.txt')
+    font_data, font_tags = parse_emoji_file('emojis12x12.txt')
     # font_data, font_tags = parse_font_file('font.h')
 
     example_data_input = np.array(font_data)
