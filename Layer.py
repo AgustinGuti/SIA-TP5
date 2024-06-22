@@ -6,7 +6,6 @@ class Layer:
     def __init__(self, dimensions, id, activation_function, beta, learning_rate, optimizer, use_backtracking_as_final_gradient=False):
         self.id = id
         self.weights = np.random.randn(dimensions[0], dimensions[1])
-        self.biases = np.random.randn(dimensions[0], 1)
 
         self.output_dimensions = dimensions[1]
         self.optimizer = optimizer
@@ -21,8 +20,6 @@ class Layer:
         self.optimizer = optimizer
 
         self.weight_acum = 0
-        self.bias_acum = 0
-        self.count = 0
 
         self.last_input = None
 
@@ -33,7 +30,7 @@ class Layer:
     
     def forward(self, data):
         self.last_input = data
-        self.last_excitement = np.dot(data, self.weights) # + self.biases
+        self.last_excitement = np.dot(data, self.weights)
         self.last_output = compute_activation(self.activation_function, self.last_excitement, self.beta)
         return self.last_output
     
@@ -48,22 +45,17 @@ class Layer:
             self.adam_params.get_delta(iteration, self.weights_error, location=self.weights_error)
 
         self.weight_acum += self.weights_error * self.learning_rate # / (1 + 0.001 * iteration)
-        # if iteration % 1000 == 0 and self.id == 0:
-        #     print(f'{self.learning_rate / (1 + 0.001 * iteration)}')
 
         return new_gradient
     
     def update(self):
         np.subtract(self.weights, self.weight_acum, out=self.weights)
         self.weight_acum = 0
-        self.count = 0
 
     def dump_weights_to_file(self, filename):
         weights = self.weights.tolist()
-        bias = self.biases.tolist()
         data = {
-            'weights': weights,
-            'biases': bias
+            'weights': weights
         }
         with open(filename, 'w') as f:
             json.dump(data, f)
@@ -72,7 +64,6 @@ class Layer:
         with open(filename, 'r') as f:
             data = json.load(f)
         self.weights = np.array(data['weights'])
-        self.biases = np.array(data['biases'])
 
 
 class VariationalLayer(Layer):

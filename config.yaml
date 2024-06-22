@@ -1,6 +1,6 @@
 network:
   layers: [30, 20, 10, 4]
-  learning_rate: 0.001
+  learning_rate: 0.0001
   beta: 0.5
   function: "sigmoid"
   optimizer: "adam"

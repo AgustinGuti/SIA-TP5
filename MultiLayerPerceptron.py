@@ -35,10 +35,8 @@ class MLP:
     
     def dump_weights_to_file(self, filename):
         weights = [layer.weights.tolist() for layer in self.layers]
-        bias = [layer.biases.tolist() for layer in self.layers]
         data = {
-            'weights': weights,
-            'biases': bias
+            'weights': weights
         }
         with open(filename, 'w') as f:
             json.dump(data, f)
@@ -48,4 +46,3 @@ class MLP:
             data = json.load(f)
         for i, layer in enumerate(self.layers):
             layer.weights = np.array(data['weights'][i])
-            layer.biases = np.array(data['biases'][i])
