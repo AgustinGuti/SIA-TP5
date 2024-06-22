@@ -33,19 +33,11 @@ class Layer:
     
     def forward(self, data):
         self.last_input = data
-        # print(f'Layer {self.id} - input shape: {data.shape} - weights shape: {self.weights.shape} ')
         self.last_excitement = np.dot(data, self.weights) # + self.biases
         self.last_output = compute_activation(self.activation_function, self.last_excitement, self.beta)
         return self.last_output
     
-    def backward(self, gradient, iteration):
-        # print(f'Layer {self.id} - gradient shape: {gradient.shape} - is None: {final_gradient is None}')
-        # if final_gradient is not None:
-        #     self.weight_acum += final_gradient * self.learning_rate / (1 + 0.001 * iteration)
-        #     np.dot(self.last_input.T, final_gradient, out=self.weights_error)
-            
-        #     return np.dot(final_gradient, self.weights.T)
-        
+    def backward(self, gradient, iteration):        
         if not self.use_backtracking_as_final_gradient:
             np.multiply(compute_activation_prime(self.activation_function, self.last_excitement, self.beta), gradient, out=gradient)
         
@@ -91,11 +83,10 @@ class VariationalLayer(Layer):
     def forward(self, data):
         self.mean = data[:, : data.shape[1] // 2]
         self.std = data[:, data.shape[1] // 2:]
-
         z, eps = reparametrization_trick(self.mean, self.std)
         self.last_eps = eps
         self.last_output = z
-        return np.array(z), self.mean, self.std
+        return np.array(z)
     
     def backward(self, gradient, iteration):
         

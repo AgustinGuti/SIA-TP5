@@ -12,7 +12,7 @@ best_networks:
       function: "tan_h"
       optimizer: "adam"
 run_config:
-  train: True
+  train: False
   continue: False
 test:
   generate_alphabet: False
@@ -26,4 +26,4 @@ denoising:
   noise_type: "gaussian" # "gaussian" or "salt_and_pepper"
   noise_level: 0.1
 variational:
-  enable: False
+  enable: True

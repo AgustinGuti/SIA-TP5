@@ -24,7 +24,7 @@ class Autoencoder:
 
     def predict_latent_space(self, data_input):
         encoder_output = self.encoder.predict(data_input)
-        latent_output = self.latent.forward(encoder_output)[0]
+        latent_output = self.latent.forward(encoder_output)
         return latent_output
 
     def predict_from_latent_space(self, data_input):
@@ -32,13 +32,10 @@ class Autoencoder:
         return decoder_output
 
     def predict(self, data_input):
-        return self.predict_with_latent_data(data_input)[0]
-    
-    def predict_with_latent_data(self, data_input):
         encoder_output = self.encoder.predict(data_input)
         latent_output = self.latent.forward(encoder_output)
         decoder_output = self.decoder.predict(latent_output)
-        return decoder_output
+        return decoder_output    
 
     def dump_weights_to_file(self, filename):
         self.encoder.dump_weights_to_file(f'{filename}_encoder.txt')
@@ -88,7 +85,7 @@ class Autoencoder:
                 err = 0
                 # mu = np.random.randint(0, input_len)
                 for mu in range(input_len):
-                    result= self.predict_with_latent_data(data_input[mu])
+                    result= self.predict(data_input[mu])
                     err += calculate_error(result, expected_output[mu])
                     gradient = calculate_error_derivative(result, expected_output[mu])
 
@@ -139,14 +136,8 @@ class Autoencoder:
         errors = [get_different_pixel_count(clean_results(results[i]), expected_output[i]) for i in range(len(results))]
         return errors
 
-def calculate_error(predictions, expected_output, mean_std=None):
-    kl = 0
-    # if mean_std:
-    #     kl = calculate_KL_divergence(mean_std[0], mean_std[1])
-    return np.mean(np.power(expected_output - predictions, 2)) + kl
-
-def calculate_KL_divergence(mean, std):
-    return - 0.5 * np.sum(1 + std - np.power(mean, 2) - np.exp(std))
+def calculate_error(predictions, expected_output):
+    return np.mean(np.power(expected_output - predictions, 2))
 
 def calculate_error_derivative(predictions, expected_output):
     return 2 * (predictions - expected_output) / np.size(expected_output)
