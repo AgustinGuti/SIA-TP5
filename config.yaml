@@ -1,6 +1,7 @@
 network:
+  # layers: [100, 50, 30, 10, 4]
   layers: [30, 20, 10, 4]
-  learning_rate: 0.0001
+  learning_rate: 0.1
   beta: 0.5
   function: "sigmoid"
   optimizer: "adam"
@@ -12,18 +13,19 @@ best_networks:
       function: "tan_h"
       optimizer: "adam"
 run_config:
-  train: False
+  train: True
   continue: False
 test:
   generate_alphabet: False
   show_errors_graph: False
 new_letter:
   generate: False
-  x: 0
-  y: 0.1
+  x: 0.375
+  y: -0.1
 denoising:
   enable: False
   noise_type: "gaussian" # "gaussian" or "salt_and_pepper"
   noise_level: 0.1
 variational:
-  enable: True
+  data_file: "emojis20x20.txt"
+  data_shape: [20, 20]

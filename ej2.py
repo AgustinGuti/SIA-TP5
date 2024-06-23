@@ -79,17 +79,11 @@ def generate_latent_values_graph(neural_network: Autoencoder, example_data_input
 
 
 def generate_error_map(neural_network, example_data_input, font_tags, latent_results):
-    min_latent_x = min([x[0] for x in latent_results]) - 0.1
-    max_latent_x = max([x[0] for x in latent_results]) + 0.1
+    min_latent_x = min([x[0] for x in latent_results]) * 0.9
+    max_latent_x = max([x[0] for x in latent_results]) * 1.1
 
-    min_latent_y = min([x[1] for x in latent_results]) - 0.1
-    max_latent_y = max([x[1] for x in latent_results]) + 0.1
-
-    min_latent_x = 0 - 0.1
-    max_latent_x = 1 + 0.1
-
-    min_latent_y = 0 -0.1
-    max_latent_y = 1  +0.1
+    min_latent_y = min([x[1] for x in latent_results]) * 0.9
+    max_latent_y = max([x[1] for x in latent_results]) * 1.1
 
     grid_size = 100
     x = np.linspace(min_latent_x, max_latent_x, grid_size)
@@ -113,6 +107,8 @@ def generate_error_map(neural_network, example_data_input, font_tags, latent_res
     for i, txt in enumerate(font_tags):
         plt.text(latent_results[i][0], latent_results[i][1], txt)
     plt.savefig('results/error_map2.png')    
+
+    return (min_latent_x, max_latent_x), (min_latent_y, max_latent_y)
 
 def find_error_to_letter(x, y, letter, font_tags, example_data_input, Z):
         letter_index = font_tags.index(letter)
@@ -184,14 +180,11 @@ def generate_new_letter(config, neural_network):
     print_number(f'new_letter_{new_input[0]}_{new_input[1]}', result, folder='results')
     print_number(f'new_letter_{new_input[0]}_{new_input[1]}_clean', clean_results(result), folder='results')
 
-def latent_space_data_generation(neural_network, fig_size=(12, 12)):
-    min_latent_x = 0
-    max_latent_x = 1
+def latent_space_data_generation(neural_network, fig_size=(12, 12), latent_dimensions=(1, 1)):
+    min_latent_x, max_latent_x = latent_dimensions[0]
+    min_latent_y, max_latent_y = latent_dimensions[1]
 
-    min_latent_y = 0
-    max_latent_y = 1
-
-    grid_size = 15
+    grid_size = 10
     x = np.linspace(min_latent_x, max_latent_x, grid_size)
     y = np.linspace(min_latent_y, max_latent_y, grid_size)
 
@@ -225,8 +218,7 @@ def variational_tests():
     with open('config.yaml', 'r') as f:
         config = yaml.safe_load(f)
 
-    font_data, font_tags = parse_emoji_file('emojis12x12.txt')
-    # font_data, font_tags = parse_font_file('font.h')
+    font_data, font_tags = parse_emoji_file(config['variational']['data_file'])
 
     example_data_input = np.array(font_data)
     print(example_data_input.shape)
@@ -254,12 +246,12 @@ def variational_tests():
     latent_results = neural_network.predict_latent_space(example_data_input[0])
     generate_latent_values_graph(neural_network, example_data_input, font_tags)
     
-    generate_error_map(neural_network, example_data_input, font_tags, latent_results)
+    latent_dimensions = generate_error_map(neural_network, example_data_input, font_tags, latent_results)
 
     if(config['new_letter']['generate']):
         generate_new_letter(config, neural_network)
 
-    latent_space_data_generation(neural_network, fig_size=(12, 12))
+    latent_space_data_generation(neural_network, fig_size=config['variational']['data_shape'], latent_dimensions=latent_dimensions)
 
 if __name__ == "__main__":
     main()

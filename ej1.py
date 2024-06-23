@@ -23,10 +23,11 @@ def main():
         neural_network = Autoencoder(config['network']['layers'],35, 2, config['network']['function'], config['network']['beta'], config['network']['learning_rate'], config['network']['optimizer'])
         train_neural_network(neural_network, example_data_input, example_data_output, font_tags, config['run_config'])
         
-        with open('error_history.csv', 'r') as f:
-            df = pd.read_csv('error_history.csv')
+        if config['test']['show_errors_graph']:
+            with open('error_history.csv', 'r') as f:
+                df = pd.read_csv('error_history.csv')
 
-        # generate_pixel_error_graphs(df)
+            generate_pixel_error_graphs(df)
 
         batch_size = example_data_input.shape[0]
         num_complete_batches, remainder = divmod(len(example_data_input), batch_size)
@@ -35,7 +36,8 @@ def main():
         example_data_input = np.array(batches)
         example_data_output = np.array(batches)
 
-        # predict_and_print(neural_network, example_data_input, example_data_output, font_tags)
+        if config['test']['generate_alphabet']:
+            predict_and_print(neural_network, example_data_input, example_data_output, font_tags)
 
         latent_results = neural_network.predict_latent_space(example_data_input)
         generate_latent_values_graph(neural_network, example_data_input, font_tags)
@@ -78,7 +80,8 @@ def denoising_tests():
         new_data_input = [gaussian_noise(new_data_input[i], config['denoising']['noise_level'], shape=(7, 5)) for i in range(len(example_data_input))]
     
     new_data_input = np.array([new_data_input])
-    # predict_and_print(neural_network, new_data_input, [example_data_output], font_tags, show_original=True)
+    if config['test']['generate_alphabet']:
+        predict_and_print(neural_network, new_data_input, [example_data_output], font_tags, show_original=True)
 
     latent_results = neural_network.predict_latent_space(new_data_input)
     generate_error_map(neural_network, [font_data], font_tags, latent_results)
@@ -187,11 +190,11 @@ def find_less_error(x, y, font_tags, example_data_input, Z):
 
 
 def latent_space_data_generation(neural_network, fig_size=(7, 5)):
-    min_latent_x = 0
-    max_latent_x = 1
+    min_latent_x = -0.4
+    max_latent_x = 0.6
 
-    min_latent_y = 0
-    max_latent_y = 1
+    min_latent_y = -0.6
+    max_latent_y = 0.4
 
     grid_size = 15
     x = np.linspace(min_latent_x, max_latent_x, grid_size)
@@ -223,29 +226,42 @@ def plot_figures(data, grid_size, figure_size_x, figure_size_y):
     plt.axis('off')
 
 def generate_pixel_error_graphs(df):
+    # Pixel Training Error Graph
     plt.figure()
     plt.plot(df['iteration'], df['pixel_error'])
     plt.xlabel('Epochs')
     plt.ylabel('Error')
     plt.title(f'Pixel Training Error over Epochs')
+    last_iter = df['iteration'].iloc[-1]
+    last_pixel_error = df['pixel_error'].iloc[-1]
+    plt.text(last_iter, last_pixel_error, f'{last_pixel_error:.2f}', ha='right')
     plt.savefig('results/pixel_error.png')
 
+    # Training Error Graph
     plt.figure()
     plt.plot(df['iteration'], df['error'])
     plt.xlabel('Epochs')
     plt.ylabel('Error')
     plt.title(f'Training Error over Epochs')
+    last_error = df['error'].iloc[-1]
+    plt.text(last_iter, last_error, f'{last_error:.2f}', ha='right')
     plt.savefig('results/error.png')
 
+    # Max Pixel Error Graph
     plt.figure()
     plt.plot(df['iteration'], df['max_pixel_error'])
     plt.xlabel('Epochs')
     plt.ylabel('Error')
-    plt.title(f'Max Pixel Training Error over Epochs')
+    plt.title(f'Max Pixel Error over Epochs')
+    last_max_pixel_error = df['max_pixel_error'].iloc[-1]
+    plt.text(last_iter, last_max_pixel_error, f'{last_max_pixel_error:.2f}', ha='right')
     plt.savefig('results/max_pixel_error.png')
     
 def predict_and_print(neural_network: Autoencoder, example_data_input, example_data_output, font_tags, show_original=False):
     total_error = 0
+
+    letters_data = []
+
     for i, input_data in enumerate(example_data_input[0]):
         result = neural_network.predict(input_data)
 
@@ -254,11 +270,43 @@ def predict_and_print(neural_network: Autoencoder, example_data_input, example_d
         print(f'Letter: {letter} - Pixel Error: {pixel_error}')
         total_error += pixel_error
 
-        if show_original:
-            print_number(f'{letter}_expected', example_data_output[0][i])
-        print_number(letter, result)
-        print_number(f'{letter}_clean', clean_results(result))
-        print_number(f'{letter}_input', input_data)
+        letters_data.append((letter, input_data, result))
+
+        # if show_original:
+        #     print_number(f'{letter}_expected', example_data_output[0][i])
+        # print_number(letter, result)
+        # print_number(f'{letter}_clean', clean_results(result))
+        # print_number(f'{letter}_input', input_data)
+
+    fig, axs = plt.subplots(4, 8)
+    fig.suptitle('Letters')
+    for i, (letter, input_data, result) in enumerate(letters_data):
+        ax = axs[i // 8, i % 8]
+        ax.imshow(result.reshape(7, 5), cmap='gray_r', vmin=0, vmax=1)
+        ax.axis('off')
+        ax.set_title(letter)
+    plt.savefig('results/letters/letters.png')
+    plt.close()
+
+    fig, axs = plt.subplots(4, 8)
+    fig.suptitle('Letters')
+    for i, (letter, input_data, result) in enumerate(letters_data):
+        ax = axs[i // 8, i % 8]
+        ax.imshow(input_data.reshape(7, 5), cmap='gray_r', vmin=0, vmax=1)
+        ax.axis('off')
+        ax.set_title(letter)
+    plt.savefig('results/letters/letters_input.png')
+    plt.close()
+
+    fig, axs = plt.subplots(4, 8)
+    fig.suptitle('Letters')
+    for i, (letter, input_data, result) in enumerate(letters_data):
+        ax = axs[i // 8, i % 8]
+        ax.imshow(clean_results(result).reshape(7, 5), cmap='gray_r', vmin=0, vmax=1)
+        ax.axis('off')
+        ax.set_title(letter)
+    plt.savefig('results/letters/letters_clean.png')
+    plt.close()
 
     print(f'Total error: {total_error}')
 

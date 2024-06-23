@@ -120,7 +120,7 @@ class Autoencoder:
                 if error < self.min_error:
                     self.min_error = error
 
-                if pixel_error == 0:
+                if error <= 1e-5:
                     break
 
                 self.encoder.update()
@@ -136,11 +136,23 @@ class Autoencoder:
         errors = [get_different_pixel_count(clean_results(results[i]), expected_output[i]) for i in range(len(results))]
         return errors
 
+
 def calculate_error(predictions, expected_output):
-    return np.mean(np.power(expected_output - predictions, 2))
+    # return np.mean(np.square(predictions - expected_output))
+    return binary_cross_entropy(predictions, expected_output)
+
+def binary_cross_entropy(predictions, expected_output):
+    epsilon = 1e-10  # Small constant to avoid log(0)
+    predictions = np.clip(predictions, epsilon, 1 - epsilon)  # Clip predictions to avoid log(0)
+    return -np.mean(expected_output * np.log(predictions) + (1 - expected_output) * np.log(1 - predictions))
+
+def binary_cross_entropy_derivative(predictions, expected_output):
+    epsilon = 1e-10
+    return (predictions - expected_output) / ((predictions * (1 - predictions)) + epsilon)
 
 def calculate_error_derivative(predictions, expected_output):
-    return 2 * (predictions - expected_output) / np.size(expected_output)
+    # return 2 * (predictions - expected_output) / np.size(expected_output)
+    return binary_cross_entropy_derivative(predictions, expected_output)
 
 def clean_results(results):
     cleaned = np.array([1 if i > 0.5 else 0 for i in results])

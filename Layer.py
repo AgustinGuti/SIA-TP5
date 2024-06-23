@@ -44,7 +44,7 @@ class Layer:
         if self.optimizer == 'adam':
             self.adam_params.get_delta(iteration, self.weights_error, location=self.weights_error)
 
-        self.weight_acum += self.weights_error * self.learning_rate # / (1 + 0.001 * iteration)
+        self.weight_acum += self.weights_error * self.learning_rate / (1 + 0.001 * iteration)
 
         return new_gradient
     
@@ -88,18 +88,18 @@ class VariationalLayer(Layer):
 
         # KL divergence
         dKL_dmu = self.mean
-        dKL_dsigma = 0.5 * (np.exp(0.5 * self.std) - 1)
+        dKL_dsigma = 0.5 * (np.exp(self.std) - 1)
 
-        total_error = np.concatenate((dE_mu + dKL_dmu * 0, dE_sigma + dKL_dsigma * 0), axis=1)
+        beta = 1 # - 1 / (1 + 0.0001 * iteration)
+        if iteration % 1000 == 0:
+            print(f'Layer {self.id} - beta: {beta}')
 
-        # encoder_output_error = np.concatenate((dE_mu, dE_sigma), axis=1)
+        total_error = np.concatenate((dE_mu + dKL_dmu * beta, dE_sigma + dKL_dsigma * beta), axis=1)
 
-        return total_error
+        return total_error #+ kl_derivative
     
     def update(self):
-        np.subtract(self.weights, self.weight_acum, out=self.weights)
-        self.weight_acum = 0
-        self.count = 0
+        pass
 
 def reparametrization_trick(mean, std):
     eps = np.random.normal(0, 1)
